@@ -1,17 +1,28 @@
 /**
  * Main poll loop — scan → filter → pattern check → alert.
+ * Now with Telegram command handling and alert limits.
  */
 
 import { POLL_INTERVAL_MS } from "./config.js";
+import { runtimeConfig } from "./runtimeConfig.js";
 import { fetchPools } from "./krystal.js";
 import { filterAndRank } from "./filters.js";
 import { checkPattern } from "./pattern.js";
 import { sendTelegramAlert } from "./telegram.js";
 import { sendDiscordAlert } from "./discord.js";
+import { pollCommands } from "./commands.js";
 import { initDb, wasAlerted, markAlerted, closeDb } from "./db.js";
 import { getKrystalBudgetRemaining } from "./rateLimit.js";
 
 async function pollCycle(): Promise<void> {
+  // Handle any incoming Telegram commands first
+  await pollCommands();
+
+  if (runtimeConfig.paused) {
+    console.log(`[poll] ⏸️  Paused — skipping scan`);
+    return;
+  }
+
   console.log(
     `\n[poll] Starting scan — ${new Date().toISOString()} | Krystal budget: ${getKrystalBudgetRemaining()} units remaining`
   );
@@ -27,13 +38,19 @@ async function pollCycle(): Promise<void> {
   // 3. Check each candidate for pattern match + de-dupe
   let alertCount = 0;
   for (const pool of candidates) {
-    // Skip if already alerted recently
+    // Stop if we've hit the per-cycle alert cap
+    if (alertCount >= runtimeConfig.maxAlertsPerCycle) {
+      console.log(`[poll] Alert cap reached (${runtimeConfig.maxAlertsPerCycle}) — stopping for this cycle`);
+      break;
+    }
+
+    // Skip if already alerted recently (uses runtime-adjustable cooldown)
     if (wasAlerted(pool.address)) continue;
 
-    // Throttle between GeckoTerminal calls (free tier ~30 req/min)
+    // Throttle between Krystal historical calls
     await new Promise((r) => setTimeout(r, 2_500));
 
-    // Pattern check (OHLC candle analysis via GeckoTerminal)
+    // Pattern check (hourly price data via Krystal historical)
     const pattern = await checkPattern(pool.address);
     if (!pattern.match) {
       console.log(
@@ -56,6 +73,7 @@ async function pollCycle(): Promise<void> {
       pool.baseToken.symbol,
     );
     alertCount++;
+    runtimeConfig.totalAlertsSent++;
   }
 
   console.log(
@@ -67,6 +85,7 @@ async function main(): Promise<void> {
   console.log("🚀 LP Signal Bot starting...");
   console.log(`   Chain: Robinhood (4663)`);
   console.log(`   Poll interval: ${POLL_INTERVAL_MS / 1000}s`);
+  console.log(`   Max alerts/cycle: ${runtimeConfig.maxAlertsPerCycle}`);
   console.log(`   Discord: ${process.env.DISCORD_WEBHOOK_URL ? "enabled" : "disabled (no webhook URL)"}`);
 
   // Init SQLite (async — sql.js loads WASM)

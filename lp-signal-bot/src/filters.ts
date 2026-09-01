@@ -6,10 +6,10 @@
 
 import {
   BASE_ASSETS,
-  MIN_FEE_BPS,
   MIN_TVL_USD,
   MIN_VOLUME_24H_USD,
 } from "./config.js";
+import { runtimeConfig } from "./runtimeConfig.js";
 import type { KrystalPool, RankedPool } from "./types.js";
 
 /**
@@ -33,8 +33,8 @@ export function filterAndRank(pools: KrystalPool[]): RankedPool[] {
     const targetToken = t0isBase ? pool.token1 : pool.token0;
     const baseToken = t0isBase ? pool.token0 : pool.token1;
 
-    // ── Fee tier ≥ 1% ──
-    if (pool.feeTier < MIN_FEE_BPS) continue;
+    // ── Fee tier ≥ min (adjustable via /setfee) ──
+    if (pool.feeTier < runtimeConfig.minFeeBps) continue;
 
     // ── TVL floor ──
     if (pool.tvlUsd < MIN_TVL_USD) continue;

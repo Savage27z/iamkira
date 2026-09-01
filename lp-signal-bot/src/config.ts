@@ -60,6 +60,10 @@ export const KRYSTAL_BUDGET_WARN_THRESHOLD = 5_000;
 // ── DexScreener ────────────────────────────────────────────────────
 export const DEXSCREENER_CHAIN_SLUG = "robinhood";
 
+// ── Alert limits ───────────────────────────────────────────────────
+/** Max alerts to send per poll cycle (prevents spam) */
+export const MAX_ALERTS_PER_CYCLE = 5;
+
 // ── Poll loop ──────────────────────────────────────────────────────
 export const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 300_000;
 /** Don't re-alert on the same pool within this window (ms). Default 24h. */

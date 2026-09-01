@@ -8,6 +8,7 @@ import initSqlJs, { type Database } from "sql.js";
 import path from "node:path";
 import fs from "node:fs";
 import { DEALERT_WINDOW_MS } from "./config.js";
+import { runtimeConfig } from "./runtimeConfig.js";
 
 let db: Database;
 let dbPath: string;
@@ -45,7 +46,7 @@ export async function initDb(customPath?: string): Promise<void> {
 
 /** Check if we've already alerted on this pool within the de-alert window */
 export function wasAlerted(poolAddress: string): boolean {
-  const cutoff = Date.now() - DEALERT_WINDOW_MS;
+  const cutoff = Date.now() - runtimeConfig.dealertWindowMs;
   const stmt = db.prepare(
     "SELECT 1 FROM alerted_pools WHERE pool_address = ? AND alerted_at > ?"
   );
