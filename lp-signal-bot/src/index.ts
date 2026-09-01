@@ -30,6 +30,9 @@ async function pollCycle(): Promise<void> {
     // Skip if already alerted recently
     if (wasAlerted(pool.address)) continue;
 
+    // Throttle between GeckoTerminal calls (free tier ~30 req/min)
+    await new Promise((r) => setTimeout(r, 2_500));
+
     // Pattern check (OHLC candle analysis via GeckoTerminal)
     const pattern = await checkPattern(pool.address);
     if (!pattern.match) {

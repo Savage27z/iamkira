@@ -63,9 +63,9 @@ export async function fetchWithBackoff(
 
     if (res.status === 429) {
       const retryAfter = res.headers.get("retry-after");
-      const delay = retryAfter
-        ? Number(retryAfter) * 1000
-        : BASE_DELAY_MS * 2 ** attempt;
+      const parsed = retryAfter ? Number(retryAfter) * 1000 : 0;
+      // Always wait at least BASE_DELAY_MS — some APIs return retry-after: 0
+      const delay = Math.max(parsed, BASE_DELAY_MS * 2 ** attempt);
       console.warn(
         `[rate-limit] 429 from ${new URL(url).hostname} — retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${retries})`
       );
