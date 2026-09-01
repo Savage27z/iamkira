@@ -3,6 +3,12 @@
  *
  * Docs: https://cloud-api.krystal.app/swagger/index.html
  * Auth: KC-APIKey header (get your key at https://cloud.krystal.app)
+ *
+ * Response shape (per pool):
+ *   poolAddress, feeTier, tvl,
+ *   token0: { token: { address, symbol, name, decimals } },
+ *   token1: { token: { address, symbol, name, decimals } },
+ *   stats24h: { volume, fee, apr }
  */
 
 import {
@@ -57,8 +63,9 @@ export async function fetchPools(): Promise<KrystalPool[]> {
         continue;
       }
 
-      const body = (await res.json()) as { data?: { pools?: unknown[] } };
-      const raw = body?.data?.pools ?? [];
+      // Cloud API returns a flat array of pool objects (not wrapped in { data: { pools } })
+      const body = await res.json();
+      const raw: unknown[] = Array.isArray(body) ? body : (body?.data?.pools ?? body?.data ?? []);
 
       for (const p of raw) {
         const pool = normalizePool(p, String(KRYSTAL_CHAIN_ID), protocol);
@@ -76,7 +83,15 @@ export async function fetchPools(): Promise<KrystalPool[]> {
   return pools;
 }
 
-/** Best-effort normalisation of Krystal's response shape into our type */
+/**
+ * Normalise Krystal Cloud API pool response into our type.
+ *
+ * Actual shape:
+ *   { poolAddress, feeTier, tvl,
+ *     token0: { token: { address, symbol, name, decimals } },
+ *     token1: { token: { address, symbol, name, decimals } },
+ *     stats24h: { volume, fee, apr } }
+ */
 function normalizePool(
   raw: unknown,
   chainId: string,
@@ -84,12 +99,19 @@ function normalizePool(
 ): KrystalPool | null {
   try {
     const r = raw as Record<string, unknown>;
-    const t0 = r.token0 as Record<string, unknown> | undefined;
-    const t1 = r.token1 as Record<string, unknown> | undefined;
+
+    // Tokens are nested: token0.token.address (not token0.address)
+    const t0wrapper = r.token0 as Record<string, unknown> | undefined;
+    const t1wrapper = r.token1 as Record<string, unknown> | undefined;
+    const t0 = (t0wrapper?.token ?? t0wrapper) as Record<string, unknown> | undefined;
+    const t1 = (t1wrapper?.token ?? t1wrapper) as Record<string, unknown> | undefined;
     if (!t0 || !t1) return null;
 
+    // Stats are nested: stats24h.volume, stats24h.apr
+    const stats24h = (r.stats24h ?? {}) as Record<string, unknown>;
+
     return {
-      address: String(r.address ?? r.poolAddress ?? ""),
+      address: String(r.poolAddress ?? r.address ?? ""),
       chainId,
       protocol,
       token0: {
@@ -105,9 +127,9 @@ function normalizePool(
         decimals: Number(t1.decimals ?? 18),
       },
       feeTier: Number(r.feeTier ?? r.fee ?? 0),
-      tvlUsd: Number(r.tvlUsd ?? r.tvl ?? 0),
-      volume24hUsd: Number(r.volume24hUsd ?? r.volume24h ?? 0),
-      apr24h: r.apr24h != null ? Number(r.apr24h) : undefined,
+      tvlUsd: Number(r.tvl ?? r.tvlUsd ?? 0),
+      volume24hUsd: Number(stats24h.volume ?? r.volume24hUsd ?? 0),
+      apr24h: stats24h.apr != null ? Number(stats24h.apr) : undefined,
     };
   } catch {
     return null;
