@@ -18,7 +18,7 @@ export const KRYSTAL_BASE_URL = "https://cloud-api.krystal.app";
 export const KRYSTAL_AUTH_HEADER = "KC-APIKey";
 /** Krystal uses numeric chainId for the query param */
 export const KRYSTAL_CHAIN_ID = CHAIN_ID;
-export const KRYSTAL_PROTOCOLS = ["uniswapV3"] as const;
+export const KRYSTAL_PROTOCOLS = ["uniswapv3"] as const;
 
 // ── Pool filters ───────────────────────────────────────────────────
 /** Minimum fee tier in basis points (10_000 = 1%). Pools below this are excluded. */
