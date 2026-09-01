@@ -57,11 +57,8 @@ export const KRYSTAL_UNITS_PER_CALL = 10;
 /** Warn when remaining budget drops below this */
 export const KRYSTAL_BUDGET_WARN_THRESHOLD = 5_000;
 
-// ── DexScreener / GeckoTerminal ────────────────────────────────────
+// ── DexScreener ────────────────────────────────────────────────────
 export const DEXSCREENER_CHAIN_SLUG = "robinhood";
-export const GECKO_TERMINAL_BASE = "https://api.geckoterminal.com/api/v2";
-/** GeckoTerminal network identifier — typically same as DexScreener slug */
-export const GECKO_NETWORK = "robinhood-chain";
 
 // ── Poll loop ──────────────────────────────────────────────────────
 export const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 300_000;
